@@ -3568,22 +3568,30 @@
 }
 
 .vc-game-options {
-  display: grid;
-  gap: 3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .vc-game-options button {
+  width: 38px;
+  min-width: 38px;
   min-height: 38px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 11px;
-  padding: 7px 3px;
+  justify-content: center;
+  padding: 0;
   border: 0;
+  border-radius: 5px;
   color: #cbd8d0;
   background: transparent;
-  font-size: 12px;
-  text-align: left;
   cursor: pointer;
+}
+
+.vc-game-options button:focus-visible,
+.vc-game-option-request button:focus-visible {
+  outline: 2px solid #b8d7c4;
+  outline-offset: 2px;
 }
 
 .vc-game-options button:hover:not(:disabled) {
@@ -3602,6 +3610,48 @@
 
 .vc-game-options button.is-danger:hover:not(:disabled) {
   background: #3b2423;
+}
+
+.vc-game-option-request {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  margin-bottom: 6px;
+  padding: 4px 7px;
+  border-radius: 5px;
+  color: #d3ded7;
+  background: #14251d;
+  font-size: 11px;
+}
+
+.vc-game-option-request span {
+  flex: 1;
+}
+
+.vc-game-option-request button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  color: #cbd8d0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.vc-game-option-request button:hover {
+  color: #fff;
+  background: #294435;
+}
+
+.vc-game-option-note {
+  margin: 0 0 6px;
+  color: #9aaca2;
+  font-size: 11px;
 }
 
 .vc-game-empty {
@@ -4278,6 +4328,29 @@
 
   :root:not(.dark) .vc-app:has(.vc-game-screen) .vc-game-options button.is-danger {
     color: #b2544b;
+  }
+
+  :root:not(.dark) .vc-app:has(.vc-game-screen) .vc-game-options button:focus-visible,
+  :root:not(.dark) .vc-app:has(.vc-game-screen) .vc-game-option-request button:focus-visible {
+    outline-color: #3c8059;
+  }
+
+  :root:not(.dark) .vc-app:has(.vc-game-screen) .vc-game-option-request {
+    color: #3d5145;
+    background: #eef5f0;
+  }
+
+  :root:not(.dark) .vc-app:has(.vc-game-screen) .vc-game-option-request button {
+    color: #53665a;
+  }
+
+  :root:not(.dark) .vc-app:has(.vc-game-screen) .vc-game-option-request button:hover {
+    color: #2e6748;
+    background: #dfece3;
+  }
+
+  :root:not(.dark) .vc-app:has(.vc-game-screen) .vc-game-option-note {
+    color: #738378;
   }
 
   :root:not(.dark) .vc-app:has(.vc-game-screen) .vc-game-chat-message {
@@ -6742,35 +6815,54 @@
   background: #f1f5f2;
 }
 
+.vc-game-history-review .vc-move-review__buttons {
+  border-color: #dce5de;
+  background: #e8eee9;
+}
+
+.vc-game-history-review .vc-move-review__buttons button {
+  border-color: transparent;
+  background: transparent;
+}
+
 .vc-game-history-review .vc-move-review__buttons button:hover:not(:disabled),
 .vc-game-history-review .vc-move-review__buttons button:focus-visible {
   border-color: #40845a;
   color: #275440;
-  background: #e2f0e7;
+  background: #d7e8dc;
 }
 
 .vc-move-review__buttons {
   display: flex;
-  gap: 5px;
+  overflow: hidden;
+  border: 1px solid #343735;
+  border-radius: 5px;
+  background: #282927;
 }
 
 .vc-move-review__buttons button {
-  width: 34px;
-  height: 32px;
+  width: 42px;
+  min-width: 42px;
+  height: 36px;
   display: grid;
   place-items: center;
-  border: 1px solid #294338;
-  border-radius: 7px;
-  color: #d4e1d9;
-  background: #12251d;
+  border: 0;
+  border-radius: 0;
+  color: #b6b9b6;
+  background: transparent;
   cursor: pointer;
 }
 
 .vc-move-review__buttons button:hover:not(:disabled),
 .vc-move-review__buttons button:focus-visible {
-  border-color: #6db38b;
   color: #fff;
-  outline: none;
+  outline: 2px solid #6db38b;
+  outline-offset: -2px;
+  background: #41433f;
+}
+
+.vc-move-review__buttons button.is-analysis {
+  color: #ded3a6;
 }
 
 .vc-move-review__buttons button:disabled {
@@ -6826,11 +6918,12 @@
   }
 
   .vc-move-review__buttons {
-    gap: 3px;
+    gap: 0;
   }
 
   .vc-move-review__buttons button {
-    width: 32px;
+    width: 38px;
+    min-width: 38px;
   }
 }
 

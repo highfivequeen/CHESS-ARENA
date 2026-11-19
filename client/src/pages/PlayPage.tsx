@@ -3,6 +3,7 @@ import { Chess, type Square } from "chess.js";
 import {
   ArrowRight,
   Bot,
+  Check,
   Circle,
   Clock3,
   Copy,
@@ -22,6 +23,7 @@ import {
   UserPlus,
   Volume2,
   VolumeX,
+  X,
   Zap,
 } from "lucide-react";
 import type { AxiosError } from "axios";
@@ -1518,29 +1520,90 @@ export default function PlayPage({
                   />
                   {moveReview.error && <p role="alert" className="vc-game-status is-review-error">Impossible de relire les coups : {moveReview.error}</p>}
                 </div>
-                <div className="vc-game-panel-section">
+                <div className="vc-game-panel-section vc-game-panel-section--options">
                   <h2>Options</h2>
-                  <div className="vc-game-options">
-                    <button onClick={() => void gameAction("draw-offers")} disabled={activeGame.status !== "IN_PROGRESS"}>
-                      <Handshake size={17} /> Proposer nulle
+                  {activeGame.drawOfferParticipantId != null &&
+                    activeGame.drawOfferParticipantId !== myParticipantId && (
+                      <div className="vc-game-option-request" role="group" aria-label="Répondre à l’offre de nulle">
+                        <Handshake size={16} aria-hidden="true" />
+                        <span>Offre de nulle</span>
+                        <button
+                          type="button"
+                          aria-label="Accepter la nulle"
+                          title="Accepter la nulle"
+                          onClick={() => void respond("draw-offers/respond", true)}
+                        >
+                          <Check size={16} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Refuser la nulle"
+                          title="Refuser la nulle"
+                          onClick={() => void respond("draw-offers/respond", false)}
+                        >
+                          <X size={16} aria-hidden="true" />
+                        </button>
+                      </div>
+                    )}
+                  {activeGame.pendingUndoParticipantId != null &&
+                    activeGame.pendingUndoParticipantId !== myParticipantId && (
+                      <div className="vc-game-option-request" role="group" aria-label="Répondre à la demande d’annulation">
+                        <RotateCcw size={16} aria-hidden="true" />
+                        <span>Annulation demandée</span>
+                        <button
+                          type="button"
+                          aria-label="Accepter l’annulation"
+                          title="Accepter l’annulation"
+                          onClick={() => void respond("undo-requests/respond", true)}
+                        >
+                          <Check size={16} aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Refuser l’annulation"
+                          title="Refuser l’annulation"
+                          onClick={() => void respond("undo-requests/respond", false)}
+                        >
+                          <X size={16} aria-hidden="true" />
+                        </button>
+                      </div>
+                    )}
+                  {activeGame.drawOfferParticipantId != null &&
+                    activeGame.drawOfferParticipantId === myParticipantId && (
+                    <p className="vc-game-option-note">Offre de nulle envoyée</p>
+                  )}
+                  {activeGame.pendingUndoParticipantId != null &&
+                    activeGame.pendingUndoParticipantId === myParticipantId && (
+                    <p className="vc-game-option-note">Demande d’annulation envoyée</p>
+                  )}
+                  <div className="vc-game-options" role="group" aria-label="Actions de la partie">
+                    <button
+                      type="button"
+                      aria-label="Proposer une nulle"
+                      title="Proposer une nulle"
+                      onClick={() => void gameAction("draw-offers")}
+                      disabled={activeGame.status !== "IN_PROGRESS"}
+                    >
+                      <Handshake size={18} aria-hidden="true" />
                     </button>
-                    <button onClick={() => void gameAction("undo-requests")} disabled={activeGame.status !== "IN_PROGRESS"}>
-                      <RotateCcw size={17} /> Demander une annulation
+                    <button
+                      type="button"
+                      aria-label="Demander une annulation"
+                      title="Demander une annulation"
+                      onClick={() => void gameAction("undo-requests")}
+                      disabled={activeGame.status !== "IN_PROGRESS"}
+                    >
+                      <RotateCcw size={18} aria-hidden="true" />
                     </button>
-                    <button onClick={() => void respond("draw-offers/respond", true)} disabled={!activeGame.drawOfferParticipantId || activeGame.drawOfferParticipantId === myParticipantId}>
-                      Accepter la nulle
-                    </button>
-                    <button onClick={() => void respond("undo-requests/respond", true)} disabled={!activeGame.pendingUndoParticipantId || activeGame.pendingUndoParticipantId === myParticipantId}>
-                      Accepter l’annulation
-                    </button>
-                    <button onClick={() => void respond("draw-offers/respond", false)} disabled={!activeGame.drawOfferParticipantId || activeGame.drawOfferParticipantId === myParticipantId}>
-                      Refuser la nulle
-                    </button>
-                    <button onClick={() => void respond("undo-requests/respond", false)} disabled={!activeGame.pendingUndoParticipantId || activeGame.pendingUndoParticipantId === myParticipantId}>
-                      Refuser l’annulation
-                    </button>
-                    <button className="is-danger" onClick={() => void gameAction("resign")} disabled={activeGame.status !== "IN_PROGRESS"}>
-                      <Flag size={17} /> Abandonner
+                    <button
+                      type="button"
+                      className="is-danger"
+                      aria-label="Abandonner la partie"
+                      title="Abandonner la partie"
+                      onClick={() => void gameAction("resign")}
+                      disabled={activeGame.status !== "IN_PROGRESS"}
+                    >
+                      <Flag size={18} aria-hidden="true" />
                     </button>
                   </div>
                 </div>

@@ -2,12 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Chess, type Square } from "chess.js";
 import {
   ArrowLeft,
-  Brain,
   CheckCircle2,
   Clock3,
   Crown,
   Eye,
-  LoaderCircle,
   XCircle,
 } from "lucide-react";
 import type { AxiosError } from "axios";
@@ -416,6 +414,20 @@ export default function GamesPage({ onNavigate }: GamesPageProps) {
                   currentPly={currentPly}
                   moveCount={moves.length}
                   onSelectPly={(ply) => setReviewPly(ply === moves.length ? null : ply)}
+                  onAnalyze={() => void requestAnalysis()}
+                  analysisDisabled={
+                    selected.game.status !== "FINISHED" ||
+                    analysisStatus === "READY"
+                  }
+                  analysisBusy={
+                    analysisStatus === "REQUESTING" ||
+                    analysisStatus === "PENDING"
+                  }
+                  analysisLabel={
+                    analysisStatus === "ERROR"
+                      ? "Réessayer l’analyse avec Stockfish"
+                      : "Analyser la partie avec Stockfish"
+                  }
                 />
                 {moveReview.error && <p role="alert" className="mt-3 text-sm text-rose-300">Impossible de relire les coups : {moveReview.error}</p>}
               </div>
@@ -423,19 +435,6 @@ export default function GamesPage({ onNavigate }: GamesPageProps) {
             <section className="rounded-2xl border border-slate-700 bg-slate-900/70 p-5" aria-labelledby="game-analysis-title">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 id="game-analysis-title" className="font-semibold text-white">Analyse de la partie</h2>
-                {selected.game.status === "FINISHED" && analysisStatus !== "READY" && (
-                  <button
-                    type="button"
-                    onClick={() => void requestAnalysis()}
-                    disabled={analysisStatus === "REQUESTING" || analysisStatus === "PENDING"}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-wait disabled:opacity-60"
-                  >
-                    {analysisStatus === "REQUESTING" || analysisStatus === "PENDING"
-                      ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-                      : <Brain className="h-4 w-4" aria-hidden="true" />}
-                    {analysisStatus === "ERROR" ? "Réessayer l’analyse" : "Analyser avec Stockfish"}
-                  </button>
-                )}
               </div>
 
               {selected.game.status !== "FINISHED" ? (
