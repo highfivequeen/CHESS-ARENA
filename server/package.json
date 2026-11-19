@@ -85,7 +85,7 @@
     "@effect/sql-sqlite-do": "4.0.0-rc.115",
     "@effect/vitest": "4.0.0-rc.115",
     "hono": "^4.13.7",
-    "@hono/node-server": "^1.19.15",
+    "@hono/node-server": "^2.1.8",
     "lodash": "^4.18.1",
     "valibot": "^1.4.2"
   },
