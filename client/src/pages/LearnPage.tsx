@@ -273,10 +273,13 @@ function LevelIllustration({ level }: LevelIllustrationProps) {
 export default function LearnPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [trainingProgress, setTrainingProgress] = useState<TrainingRatingProgress | null>(null);
-  const [trainingLoading, setTrainingLoading] = useState(Boolean(user));
+  const [trainingLoadResult, setTrainingLoadResult] = useState<{
+    userId: string;
+    attempt: number;
+    progress: TrainingRatingProgress | null;
+    error: string | null;
+  } | null>(null);
   const [trainingSaving, setTrainingSaving] = useState(false);
-  const [trainingLoadError, setTrainingLoadError] = useState<string | null>(null);
   const [trainingSaveError, setTrainingSaveError] = useState<string | null>(null);
   const [trainingLoadAttempt, setTrainingLoadAttempt] = useState(0);
   const [lastEloGain, setLastEloGain] = useState<number | null>(null);
@@ -289,6 +292,15 @@ export default function LearnPage() {
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [stepComplete, setStepComplete] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const userId = user?.id;
+  const currentTrainingLoad = userId &&
+      trainingLoadResult?.userId === userId &&
+      trainingLoadResult.attempt === trainingLoadAttempt
+    ? trainingLoadResult
+    : null;
+  const trainingProgress = currentTrainingLoad?.progress ?? null;
+  const trainingLoadError = currentTrainingLoad?.error ?? null;
+  const trainingLoading = Boolean(userId && !currentTrainingLoad);
   const activeCourseLessons = activeLevel === "beginner" ? lessons : activeLevel === "intermediate" ? intermediateLessons : advancedLessons;
   const activeLesson = allLessons.find((lesson) => lesson.id === activeLessonId) ?? lessons[0];
   const activeSteps = lessonTutorials[activeLesson.id] ?? pawnSteps;
@@ -322,29 +334,33 @@ export default function LearnPage() {
   const goToSignIn = () => navigate(`/auth?mode=signin&next=${encodeURIComponent("/?tab=learn")}`);
 
   useEffect(() => {
-    if (!user) {
-      setTrainingProgress(null);
-      setTrainingLoading(false);
-      setTrainingLoadError(null);
-      return;
-    }
+    if (!userId) return;
 
     let active = true;
-    setTrainingLoading(true);
-    setTrainingLoadError(null);
     trainingRatingApi.getProgress()
       .then((progress) => {
-        if (active) setTrainingProgress(progress);
+        if (active) {
+          setTrainingLoadResult({
+            userId,
+            attempt: trainingLoadAttempt,
+            progress,
+            error: null,
+          });
+        }
       })
       .catch(() => {
-        if (active) setTrainingLoadError("Impossible de charger le classement.");
-      })
-      .finally(() => {
-        if (active) setTrainingLoading(false);
+        if (active) {
+          setTrainingLoadResult({
+            userId,
+            attempt: trainingLoadAttempt,
+            progress: null,
+            error: "Impossible de charger le classement.",
+          });
+        }
       });
 
     return () => { active = false; };
-  }, [user?.id, trainingLoadAttempt]);
+  }, [userId, trainingLoadAttempt]);
 
   const openLessonTutorial = (lessonId: string) => {
     const nextSteps = lessonTutorials[lessonId] ?? pawnSteps;
@@ -405,15 +421,22 @@ export default function LearnPage() {
 
       setTrainingSaving(true);
       setTrainingSaveError(null);
-      setTrainingLoadError(null);
+      setTrainingLoadResult((current) =>
+        current?.userId === user.id ? { ...current, error: null } : current,
+      );
       try {
         const result = await trainingRatingApi.completeLesson(activeLesson.id, lessonMoves);
-        setTrainingProgress({
-          rating: result.rating,
-          lessonsCompleted: result.lessonsCompleted,
-          completedLessons: result.completedLessons,
-          specialCoursesUnlocked: result.specialCoursesUnlocked,
-          specialCoursesUnlockRating: result.specialCoursesUnlockRating,
+        setTrainingLoadResult({
+          userId: user.id,
+          attempt: trainingLoadAttempt,
+          progress: {
+            rating: result.rating,
+            lessonsCompleted: result.lessonsCompleted,
+            completedLessons: result.completedLessons,
+            specialCoursesUnlocked: result.specialCoursesUnlocked,
+            specialCoursesUnlockRating: result.specialCoursesUnlockRating,
+          },
+          error: null,
         });
         setLastEloGain(result.ratingChange > 0 ? result.ratingChange : null);
         setView("lessons");

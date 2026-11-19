@@ -639,11 +639,22 @@ export function attachGameGateway(httpServer: HttpServer) {
           state.game.isRated ||
           state.game.challengeId !== null ||
           state.game.tournamentRoundId !== null ||
-          state.participants.length !== 1
+          (state.participants.length !== 1 && state.participants.length !== 2)
         ) {
           throw Object.assign(new Error("Cette partie ne peut pas rejoindre la file d'attente."), {
             statusCode: 409,
           });
+        }
+        if (state.participants.length === 2) {
+          userSocket.emit(MATCHMAKING_EVENTS.FOUND, serializePayload({
+            game: state.game,
+            participant: {
+              id: participant.id,
+              color: participant.color,
+            },
+          }));
+          acknowledge?.({ success: true, data: { status: "matched", gameId } });
+          return;
         }
         const alreadyQueued = matchmakingQueue.get(userSocket.id);
         if (alreadyQueued?.gameId === gameId) {
@@ -666,7 +677,9 @@ export function attachGameGateway(httpServer: HttpServer) {
         const candidates = [...matchmakingQueue.values()].filter((candidate) =>
           candidate.socket.connected &&
           candidate.gameId !== entrant!.gameId &&
-          candidate.userId !== entrant!.userId &&
+          (candidate.userId === null ||
+            entrant!.userId === null ||
+            candidate.userId !== entrant!.userId) &&
           candidate.initialTimeSeconds === entrant!.initialTimeSeconds &&
           candidate.incrementSeconds === entrant!.incrementSeconds,
         );

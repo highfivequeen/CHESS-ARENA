@@ -1,163 +1,82 @@
-# Connexion Frontend au Backend - Checklist
+# Intégration du client avec le backend
 
-## 1. Configuration API (DONE ✓)
-- [x] `VITE_API_URL=http://localhost:3000`
-- [x] `VITE_SOCKET_URL=http://localhost:3000`
-- [x] Préfixe `/api` ajouté dans axios.ts
+Ce document décrit les contrats actuellement utilisés par le client. Pour
+modifier une route ou un événement, vérifier ensemble l’appel frontend et la
+route/le gestionnaire serveur correspondants. Les sources de vérité sont
+`src/api/`, les pages concernées, `server/src/routes/` et
+`server/src/events/`.
 
-## 2. Authentification
+## Adresses
 
-### 2.1 authApi.ts - Corriger les endpoints
-- [ ] `authApi.login()` → endpoint: `/auth/login` ✓
-- [ ] `authApi.register()` → vérifier endpoint backend: `/auth/register`
-- [ ] `authApi.me()` → endpoint: `/users/me` (、保护)
-- [ ] `authApi.refreshToken()` → endpoint: `/auth/refresh` (pas `/auth/refresh-token`)
+Le serveur monte son API HTTP sous `/api`. Le client configure Axios avec
+l’URL complète de cette API, et Socket.IO avec l’origine du serveur :
 
-### 2.2 AuthContext.tsx - Intégrer le vrai login
-- [ ] Appeler `authApi.login()` au lieu du mock
-- [ ] Stocker `accessToken` et `refreshToken` dans localStorage
-- [ ] Charger le user au démarrage avec `/users/me`
-
-## 3. Pages à connecter
-
-### 3.1 PlayPage.tsx
-- [ ] Remplacer `fetchPlayers` mocké → GET `/users` (admin requis ou créer endpoint public)
-- [ ] Remplacer `createGame` → POST `/games`
-- [ ] Intégrer Socket pour les événements temps réel (coups adverses, abandon, etc.)
-- [ ] Sauvegarder les coups → POST `/games/:gameId/moves`
-- [ ] Mettre à jour le statut → PATCH `/games/:gameId`
-
-### 3.2 GamesPage.tsx
-- [ ] Remplacer `fetchGames` → GET `/games/me` (endpoint existant)
-- [ ] Corriger l'appel moves: `/games/:gameId/moves` (pas `/api/moves`)
-- [ ] Charger les profils des joueurs → GET `/users/:id`
-
-### 3.3 UsersPage.tsx
-- [ ] GET `/users` (voir restrictions dans routes/users.ts - require ADMIN)
-- [ ] OU créer endpoint public pour lister utilisateurs en ligne
-
-### 3.4 MessagesPage.tsx
-- [ ] Le chatApi.ts utilise des endpoints inexistants: `/chat/*`
-- [ ] Créer/faire correspondre avec les endpoints messages du backend
-- [ ] Endpoints backend à vérifier: messages, conversations
-
-### 3.5 NotificationsPage.tsx
-- [ ] Backend: pas de route notifications visible
-- [ ] À créer ou utiliser les événements WebSocket
-
-## 4. WebSocket (SocketIO)
-
-### 4.1 socket.ts
-- [ ] Vérifier que `VITE_SOCKET_URL` est correct
-- [ ] Le token doit être passé dans `auth: { token: accessToken }`
-
-### 4.2 SocketContext.tsx
-- [ ] Événements à écouter (backend game.gateway.ts):
-  - [ ] `game:playerJoined`
-  - [ ] `game:moveMade`
-  - [ ] `game:gameEnded`
-  - [ ] `game:drawOffered`
-  - [ ] `game:undoRequested`
-  - [ ] `game:playerResigned`
-  - [ ] `game:noShowClaimed`
-  - [ ] `game:chatMessage`
-
-### 4.3 Events backend → front attendus
-```typescript
-// game.gateway.ts emits:
-// - 'getOnlineUsers' → déjà écouté
-// - 'game:moveMade' → mettre à jour l'échiquier
-// - 'game:gameEnded' → afficher résultat
-// - 'game:playerJoined' → notifier l'adversaire
+```dotenv
+VITE_API_URL=http://localhost:3000/api
+VITE_SOCKET_URL=http://localhost:3000
 ```
 
-## 5. Types TypeScript
+Les appels Axios utilisent des chemins relatifs à `VITE_API_URL`, par exemple
+`/auth/login` ou `/games/me`. Axios ajoute le jeton d’accès, gère le
+renouvellement sur les réponses `401` et transmet les identifiants de session
+invité aux routes de jeu invité. Voir `src/axios.ts` et `src/guestSession.ts`.
 
-### 5.1 User.ts
-- [ ] Ajouter `role`, `rating` si disponible dans la réponse backend
+## Authentification
 
-### 5.2 Game.ts
-- [ ] Vérifier que tous les champs correspondent au schema Prisma
-- [ ] Ajouter `white_player`, `black_player` si nécessaire
+`src/api/authApi.ts` expose notamment :
 
-### 5.3 Créer nouveaux types
-- [ ] `Tournament`
-- [ ] `Challenge`
-- [ ] `Notification` (si endpoint créé)
-- [ ] `InvitationLink`
+- `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`
+- `POST /auth/refresh` (renouvellement également géré par l’intercepteur Axios)
+- `GET /users/me`
+- `POST /auth/password/forgot`, `POST /auth/password/reset`
 
-## 6. Endpoints Backend disponibles
+`AuthContext` s’appuie sur Redux pour conserver l’utilisateur et le jeton. Les
+pages doivent passer par `useAuth()` et `axiosInstance` plutôt que créer une
+seconde gestion de session.
 
-### Auth
-- POST `/api/auth/register`
-- POST `/api/auth/login`
-- POST `/api/auth/refresh`
-- POST `/api/auth/logout`
-- POST `/api/auth/password/forgot`
-- POST `/api/auth/password/reset`
+## Parties et matchmaking
 
-### Users
-- GET `/api/users` (ADMIN only)
-- GET `/api/users/:userId`
-- PATCH `/api/users/me/username`
-- PATCH `/api/users/me/avatar`
-- DELETE `/api/users/me`
+Les pages de jeu utilisent l’API HTTP pour créer/récupérer les parties, lire
+les coups et effectuer les actions de jeu. L’historique d’un compte est chargé
+avec `GET /games/me`; le client consulte les détails et les coups via
+`GET /games/:gameId` et `GET /games/:gameId/moves`.
 
-### Games
-- POST `/api/games` - créer une partie
-- GET `/api/games/me` - mes parties
-- GET `/api/games/:gameId`
-- POST `/api/games/:gameId/moves` - jouer un coup
-- GET `/api/games/:gameId/moves` - historique des coups
-- POST `/api/games/:gameId/resign` - abandonner
-- POST `/api/games/:gameId/draw-offer` - offrir nul
-- GET `/api/games/:gameId/messages` - chat de partie
-- POST `/api/games/:gameId/messages` - envoyer message
+La recherche d’adversaire suit deux étapes :
 
-### Challenges
-- POST `/api/challenges`
-- GET `/api/challenges`
-- PATCH `/api/challenges/:challengeId`
-- DELETE `/api/challenges/:challengeId`
+1. `POST /games/matchmaking` crée la recherche et retourne le participant ainsi
+   que, pour un invité, son jeton de session.
+2. Socket.IO rejoint la file avec `matchmaking-join`. Les autres événements de
+   la file sont `matchmaking-found`, `matchmaking-error` et
+   `matchmaking-cancel`.
 
-### Tournaments
-- POST `/api/tournaments`
-- GET `/api/tournaments`
-- GET `/api/tournaments/:tournamentId`
-- POST `/api/tournaments/:tournamentId/join`
-- etc.
+Les noms d’événements de partie utilisés par le client comprennent
+`join-game`, `leave-game`, `game-state`, `game-ready`, `game-updated`,
+`move-played`, `timer-update`, `player-joined`, `game-error` et
+`chat-message`. Les notifications sont diffusées sous `notification`.
+Le payload des événements est défini par les constantes dans
+`server/src/events/`; ne pas substituer des noms inventés comme
+`game:moveMade`.
 
-### Invitation Links
-- POST `/api/invitation-links`
-- GET `/api/invitation-links`
-- DELETE `/api/invitation-links/:linkId`
+## Autres domaines
 
-## 7.，一步一步
+- Défis : la page de jeu charge les défis du compte via `GET /challenges/me`.
+- Historique : `GamesPage` utilise `/games/me`, `/games/:gameId` et
+  `/games/:gameId/moves`.
+- Messagerie : `MessagesPage` utilise les routes `/conversations/*` et les
+  événements Socket.IO associés ; ne pas confondre ce flux avec le chat d’une
+  partie (`/games/:gameId/messages`, événement `chat-message`).
+- Notifications : le contexte de navigation écoute `notification`. Le
+  transport est temps réel ; l’affichage et les actions relèvent du client.
 
-### Step 1: Auth fonctionne
-1. Vérifier login/register via Postman
-2.Intégrer dans AuthContext
+Les listes exhaustives des routes et les règles métier sont maintenues dans
+`server/docs/` (notamment `parties-et-coups.md`, `temps-reel.md`,
+`defis.md` et `social-et-blocages.md`).
 
-### Step 2: Charger les données utilisateur
-1. `/users/me` après login
-2. Afficher profil dans header
+## Vérifications après une modification de contrat
 
-### Step 3: Lobby - Liste joueurs
-1. Créer endpoint public OU utiliser challenge system
-
-### Step 4: Créer une partie
-1. POST `/games`
-2. Répondre avec invitation challenge
-
-### Step 5: Jeu en temps réel
-1. Connecter Socket
-2. Écouter `game:moveMade`
-3. Afficher coup adverse
-
-### Step 6: Historique des parties
-1. GET `/games/me`
-2. Voir une partie terminée
-
----
-
-**Note**: Certaines routes nécessitent `authenticate` middleware. Le frontend doit envoyer le token JWT dans le header `Authorization: Bearer <token>`. Axios le gère déjà.
+1. Comparer l’appel client au routeur/contrôleur serveur, y compris le préfixe
+   `/api`, la méthode HTTP et la forme de la réponse.
+2. Pour Socket.IO, comparer le nom et le payload dans les événements serveur
+   et dans le composant ou contexte client qui les consomme.
+3. Exécuter `npm run typecheck`, `npm run lint` et `npm test` dans `client/`,
+   puis les tests ciblés côté serveur si le contrat serveur a changé.

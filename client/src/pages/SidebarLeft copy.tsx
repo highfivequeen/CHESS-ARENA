@@ -14,7 +14,7 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigation, type Tab } from "../context/NavigationContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -52,7 +52,13 @@ const getGroupForTab = (tab: Tab): NavGroupId => {
 export default function SidebarLeft({ onNavigate }: { onNavigate: () => void }) {
   const { tab, setTab } = useNavigation();
   const { profile } = useAuth();
-  const [openGroup, setOpenGroup] = useState<NavGroupId | null>(() => getGroupForTab(tab));
+  const [openGroupOverride, setOpenGroupOverride] = useState<{
+    tab: Tab;
+    group: NavGroupId | null;
+  } | null>(null);
+  const openGroup = openGroupOverride?.tab === tab
+    ? openGroupOverride.group
+    : getGroupForTab(tab);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isAuthenticated = Boolean(profile?.id);
   const role = profile?.role;
@@ -61,10 +67,6 @@ export default function SidebarLeft({ onNavigate }: { onNavigate: () => void }) 
     : role === "ORGANIZER"
       ? "Organisateur"
       : "Joueur";
-
-  useEffect(() => {
-    setOpenGroup(getGroupForTab(tab));
-  }, [tab]);
 
   const groups: NavGroup[] = [
     {
@@ -128,9 +130,12 @@ export default function SidebarLeft({ onNavigate }: { onNavigate: () => void }) 
                 onClick={() => {
                   if (isCollapsed) {
                     setIsCollapsed(false);
-                    setOpenGroup(group.id);
+                    setOpenGroupOverride({ tab, group: group.id });
                   } else {
-                    setOpenGroup(expanded ? null : group.id);
+                    setOpenGroupOverride({
+                      tab,
+                      group: expanded ? null : group.id,
+                    });
                   }
                 }}
               >

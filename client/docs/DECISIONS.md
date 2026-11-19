@@ -69,3 +69,10 @@ N'ajouter que les décisions durables. Ne pas y enregistrer chaque modification 
 - Raisons : 5173 est le port par défaut de Vite et celui que le backend autorise déjà (`CLIENT_ORIGINS`, `.env.example`) ; aucune modification du backend n'est nécessaire. `strictPort` évite de basculer silencieusement sur un autre port, ce qui provoquerait des erreurs CORS.
 - Conséquences / compromis : les clés `localStorage` sont renommées (`highfive-chess-board-appearance`, `highfive-chess-move-sound-enabled`) ; les anciennes valeurs restent lues en secours, donc les joueurs gardent leurs préférences. Les fichiers « copy » n'ont pas été modifiés.
 - Zones concernées : `index.html`, `vite.config.ts`, `package.json`, `src/pages/` (`AuthPage`, `HomePage`, `Header`, `SidebarLeft`, `LearnPage`, `PlayPage`), `src/components/ChessLoadingScreen.tsx`, `src/context/ChessAppearanceContext.tsx`.
+
+### 2026-11-19 — Tests unitaires frontend avec Vitest et Testing Library
+- Contexte : les parcours UI et hooks du client n'avaient aucun test automatisé, contrairement au serveur.
+- Décision : utiliser Vitest, React Testing Library et jsdom pour tester composants et hooks en environnement DOM simulé ; conserver les tests colocalisés sous `src/`.
+- Raisons : réutiliser l'écosystème Vite/React existant et tester les interactions sans navigateur ni infrastructure externe.
+- Conséquences / compromis : les tests couvrent les comportements ciblés et ne remplacent pas des tests de bout en bout dans un navigateur.
+- Zones concernées : `package.json`, `src/**/*.test.tsx`.

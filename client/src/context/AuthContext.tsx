@@ -66,16 +66,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
   const accessToken = useSelector((state: RootState) => state.auth.accessToken);
-  const [loading, setLoading] = useState(() => Boolean(accessToken && !user));
+  const [resolvedAccessToken, setResolvedAccessToken] = useState<string | null>(null);
+  const loading = Boolean(accessToken && !user && resolvedAccessToken !== accessToken);
 
   useEffect(() => {
-    if (!accessToken || user) {
-      setLoading(false);
-      return;
-    }
+    if (!accessToken || user) return;
 
     let active = true;
-    setLoading(true);
     authApi.me()
       .then(({ data }) => {
         if (active) dispatch(authActions.setCredentials({ user: data.user, accessToken: accessToken }));
@@ -88,7 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setResolvedAccessToken(accessToken);
       });
 
     return () => {

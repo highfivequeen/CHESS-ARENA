@@ -17,7 +17,7 @@ export async function startGameClock(gameId: number) {
       status: "IN_PROGRESS",
       activeColor: "WHITE",
       startedAt: now,
-      clockStartedAt: now,
+      clockStartedAt: null,
       lastActivityAt: now,
     });
 }

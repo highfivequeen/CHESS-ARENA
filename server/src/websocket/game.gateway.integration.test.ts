@@ -372,6 +372,119 @@ describe("game gateway integration", () => {
     expect(mocks.matchmakingPair).toHaveBeenCalledWith(1, 2, 8);
   }, 15_000);
 
+  it("pairs guests together and restores an already paired guest after reconnecting", async () => {
+    let paired = false;
+    mocks.verifyGuestGameToken.mockImplementation((token: string) => ({
+      kind: "guest-session",
+      gameId: token === "guest-one" ? 1 : 2,
+      participantId: token === "guest-one" ? 10 : 20,
+    }));
+    mocks.authenticateGuestSession.mockResolvedValue({ id: 10 });
+    mocks.getGameForGuest.mockImplementation(async (gameId: number) => ({
+      game: {
+        ...game,
+        id: gameId,
+        initialTimeSeconds: 300,
+        incrementSeconds: 5,
+        challengeId: null,
+      },
+      participants: paired
+        ? [
+            { id: 10, userId: null, participantType: "GUEST", color: "BLACK" },
+            { id: 20, userId: null, participantType: "GUEST", color: "WHITE" },
+          ]
+        : [{
+            id: gameId === 1 ? 10 : 20,
+            userId: null,
+            participantType: "GUEST",
+            color: "WHITE",
+          }],
+    }));
+    mocks.matchmakingPair.mockImplementation(async () => {
+      paired = true;
+      return {
+        game: { ...game, id: 1 },
+        participants: [
+          { id: 10, userId: null, participantType: "GUEST", color: "BLACK" },
+          { id: 20, userId: null, participantType: "GUEST", color: "WHITE" },
+        ],
+        guestSessionTokens: {
+          10: "guest-one-refreshed",
+          20: "guest-two-refreshed",
+        },
+      };
+    });
+
+    const httpServer = createServer();
+    const ioServer = attachGameGateway(httpServer);
+    closeGateway = () => new Promise((resolve) => ioServer.close(() => resolve()));
+    await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
+    const address = httpServer.address();
+    if (!address || typeof address === "string") throw new Error("Adresse HTTP indisponible.");
+
+    const firstFound = new Promise<unknown>((resolve) => {
+      client = createClient(`http://127.0.0.1:${address.port}`, {
+        auth: { guestSessionToken: "guest-one" },
+        forceNew: true,
+        reconnection: false,
+      });
+      client.once(MATCHMAKING_EVENTS.FOUND, resolve);
+    });
+    await new Promise<void>((resolve, reject) => {
+      client?.once("connect", resolve);
+      client?.once("connect_error", reject);
+    });
+    await expect(new Promise<{ success: boolean }>((resolve) => {
+      client?.emit(MATCHMAKING_EVENTS.JOIN, { gameId: 1 }, resolve);
+    })).resolves.toMatchObject({ success: true, data: { status: "searching" } });
+
+    const secondFound = new Promise<unknown>((resolve) => {
+      secondClient = createClient(`http://127.0.0.1:${address.port}`, {
+        auth: { guestSessionToken: "guest-two" },
+        forceNew: true,
+        reconnection: false,
+      });
+      secondClient.once(MATCHMAKING_EVENTS.FOUND, resolve);
+    });
+    await new Promise<void>((resolve, reject) => {
+      secondClient?.once("connect", resolve);
+      secondClient?.once("connect_error", reject);
+    });
+    await expect(new Promise<{ success: boolean }>((resolve) => {
+      secondClient?.emit(MATCHMAKING_EVENTS.JOIN, { gameId: 2 }, resolve);
+    })).resolves.toMatchObject({ success: true, data: { status: "matched", gameId: 1 } });
+    await expect(firstFound).resolves.toMatchObject({
+      game: { id: 1 },
+      participant: { id: 10, color: "BLACK" },
+    });
+    await expect(secondFound).resolves.toMatchObject({
+      game: { id: 1 },
+      participant: { id: 20, color: "WHITE" },
+    });
+    expect(mocks.matchmakingPair).toHaveBeenCalledWith(1, 2, null);
+
+    client?.close();
+    const resumedMatch = new Promise<unknown>((resolve) => {
+      client = createClient(`http://127.0.0.1:${address.port}`, {
+        auth: { guestSessionToken: "guest-one" },
+        forceNew: true,
+        reconnection: false,
+      });
+      client.once(MATCHMAKING_EVENTS.FOUND, resolve);
+    });
+    await new Promise<void>((resolve, reject) => {
+      client?.once("connect", resolve);
+      client?.once("connect_error", reject);
+    });
+    await expect(new Promise<{ success: boolean }>((resolve) => {
+      client?.emit(MATCHMAKING_EVENTS.JOIN, { gameId: 1 }, resolve);
+    })).resolves.toMatchObject({ success: true, data: { status: "matched", gameId: 1 } });
+    await expect(resumedMatch).resolves.toMatchObject({
+      game: { id: 1 },
+      participant: { id: 10, color: "BLACK" },
+    });
+  }, 15_000);
+
   it("marks a waiting game ready without starting its clock", async () => {
     mocks.authenticateAccessToken.mockImplementation(async (token: string) => ({
       id: token === "first-token" ? 7 : 8,

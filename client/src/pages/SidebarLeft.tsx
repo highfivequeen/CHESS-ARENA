@@ -18,7 +18,7 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigation, type Tab } from "../context/NavigationContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -64,7 +64,13 @@ type SidebarLeftProps = {
 export default function SidebarLeft({ onNavigate, onToggleSidebar, sidebarCollapsed }: SidebarLeftProps) {
   const { tab, setTab } = useNavigation();
   const { profile } = useAuth();
-  const [openGroup, setOpenGroup] = useState<NavGroupId | null>(() => getGroupForTab(tab));
+  const [openGroupOverride, setOpenGroupOverride] = useState<{
+    tab: Tab;
+    group: NavGroupId | null;
+  } | null>(null);
+  const openGroup = openGroupOverride?.tab === tab
+    ? openGroupOverride.group
+    : getGroupForTab(tab);
   const isAuthenticated = Boolean(profile?.id);
   const role = profile?.role;
   const roleLabel = role === "ADMIN"
@@ -72,10 +78,6 @@ export default function SidebarLeft({ onNavigate, onToggleSidebar, sidebarCollap
     : role === "ORGANIZER"
       ? "Organisateur"
       : "Joueur";
-
-  useEffect(() => {
-    setOpenGroup(getGroupForTab(tab));
-  }, [tab]);
 
   const groups: NavGroup[] = [
     {
@@ -144,7 +146,10 @@ export default function SidebarLeft({ onNavigate, onToggleSidebar, sidebarCollap
                 className={`vc-sidebar-nav__group-trigger${expanded ? " is-expanded" : ""}`}
                 aria-expanded={expanded}
                 aria-controls={groupId}
-                onClick={() => setOpenGroup(expanded ? null : group.id)}
+                onClick={() => setOpenGroupOverride({
+                  tab,
+                  group: expanded ? null : group.id,
+                })}
               >
                 {group.icon}
                 <span>{group.label}</span>

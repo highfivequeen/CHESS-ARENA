@@ -1,82 +1,53 @@
-# React + TypeScript + Vite
+# HIGHFIVE CHESS — client web
 
-## Documentation du frontend
+Application web de HIGHFIVE CHESS : parties en ligne et contre l’ordinateur,
+défis, tournois, entraînement et espace joueur. Le client est une SPA React
+alimentée par l’API HTTP et les événements Socket.IO du serveur.
 
-- [Paramètres de partie](./docs/parametres-partie.md) : configuration des
-  parties locales, défis en ligne et parties invitées, choix des cadences,
-  couleurs et modes amical ou classé.
-- [Connexion au backend](./docs/connexion-backend.md).
+## Prérequis
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+- Node.js compatible avec Vite 8
+- npm
+- Le serveur HIGHFIVE CHESS accessible en local ou via une instance configurée
 
-Currently, two official plugins are available:
+## Configuration locale
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Créer un fichier `.env.local` à la racine du client :
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```dotenv
+VITE_API_URL=http://localhost:3000/api
+VITE_SOCKET_URL=http://localhost:3000
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+`VITE_API_URL` inclut le préfixe `/api`; les appels Axios utilisent ensuite des
+chemins comme `/auth/login`. `VITE_SOCKET_URL` est l’origine Socket.IO, sans
+préfixe `/api`. `VITE_WITH_CREDENTIALS` vaut `true` par défaut.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Commandes
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
+npm run typecheck
+npm run lint
+npm test
+npm run build
 ```
+
+Le serveur Vite écoute sur `http://localhost:5173`. Le lint et le type-check
+peuvent aussi être exécutés avant le build.
+
+## Organisation
+
+- `src/pages/` : pages et parcours de l’application.
+- `src/components/` : composants réutilisables, dont l’échiquier et les
+  contrôles de partie.
+- `src/context/`, `src/features/`, `src/store/` : état partagé, Redux et
+  contextes React.
+- `src/api/`, `src/axios.ts`, `src/socket.ts` : contrats HTTP et temps réel.
+- `src/hooks/`, `src/chess/` : hooks et logique liée aux échecs.
+- `src/**/*.test.tsx` : tests Vitest/Testing Library colocalisés avec le code.
+
+Voir [la documentation d’intégration backend](./docs/connexion-backend.md),
+[les paramètres de partie](./docs/parametres-partie.md) et
+[le contexte du projet](./docs/PROJECT.md).

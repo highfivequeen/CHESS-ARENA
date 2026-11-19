@@ -254,8 +254,13 @@ export default function PlayPage({
     return saved && !saved.waitingForMatchmaking ? readGame(saved.game) : null;
   });
   const [waitingInviteGame, setWaitingInviteGame] = useState<BackendGame | null>(null);
-  const [matchmakingGame, setMatchmakingGame] = useState<BackendGame | null>(null);
-  const [searchingForOpponent, setSearchingForOpponent] = useState(false);
+  const [matchmakingGame, setMatchmakingGame] = useState<BackendGame | null>(() => {
+    const saved = readGuestGameSession();
+    return saved?.waitingForMatchmaking ? readGame(saved.game) : null;
+  });
+  const [searchingForOpponent, setSearchingForOpponent] = useState(
+    () => Boolean(readGuestGameSession()?.waitingForMatchmaking),
+  );
   const [gamePlayersReady, setGamePlayersReady] = useState(false);
   const [clockSyncedAt, setClockSyncedAt] = useState(Date.now);
   const [clockNow, setClockNow] = useState(Date.now);
@@ -294,7 +299,11 @@ export default function PlayPage({
   const [ratedChallenge, setRatedChallenge] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState(
+    () => readGuestGameSession()?.waitingForMatchmaking
+      ? "Recherche d’un adversaire reprise après actualisation…"
+      : "",
+  );
   const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
   const [legalTargets, setLegalTargets] = useState<Square[]>([]);
   const activeGameRef = useRef<BackendGame | null>(null);
@@ -603,7 +612,7 @@ export default function PlayPage({
       setChallenges(challengeData);
       setStats(statsData);
 
-      const waitingGame = gameData.find((game) => {
+      const candidateGames = gameData.filter((game) => {
         if (
           (game.status !== "WAITING" && game.status !== "IN_PROGRESS") ||
           dismissedGameIds.current.has(game.id)
@@ -618,18 +627,44 @@ export default function PlayPage({
         }
         return game.challengeId == null || associatedChallenge?.status === "ACCEPTED";
       });
-      if (
-        waitingGame &&
-        !activeGameRef.current &&
+      const canRestoreGame = !activeGameRef.current &&
         !matchmakingCreationInProgress.current &&
         (
           !profileTargetId ||
-          (
-            createdChallengeId.current !== null &&
-            waitingGame.challengeId === createdChallengeId.current
-          )
+          createdChallengeId.current !== null
         ) &&
-        !invitationToken
+        !invitationToken;
+      let waitingGame: BackendGame | null = null;
+      if (canRestoreGame) {
+        for (const candidate of candidateGames) {
+          if (
+            profileTargetId &&
+            candidate.challengeId !== createdChallengeId.current
+          ) continue;
+          const { data: gameState } = await axiosInstance.get<{
+            game?: unknown;
+            participants?: GameParticipant[];
+          }>(`/games/${candidate.id}`);
+          const restoredGame = readGame(gameState);
+          if (!restoredGame || gameState.participants?.length !== 2) continue;
+          waitingGame = restoredGame;
+          setParticipantSnapshot({
+            gameId: restoredGame.id,
+            participants: gameState.participants,
+          });
+          const ownParticipant = gameState.participants.find(
+            (participant) => participant.userId === Number(profile?.id),
+          );
+          if (ownParticipant) {
+            setMyParticipantId(ownParticipant.id);
+            setMyColor(ownParticipant.color);
+          }
+          break;
+        }
+      }
+      if (
+        waitingGame &&
+        canRestoreGame
       ) {
         applyGameSnapshot(waitingGame);
         const { data: moveData } = await axiosInstance.get<BackendMove[]>(
@@ -996,6 +1031,17 @@ export default function PlayPage({
         };
         saveGuestGameSession(session);
         setGuestSession(session);
+      } else if (
+        guestSession?.gameId === game.id &&
+        guestSession.participantId === match.participant.id
+      ) {
+        const session: GuestGameSession = {
+          ...guestSession,
+          game,
+          waitingForMatchmaking: false,
+        };
+        saveGuestGameSession(session);
+        setGuestSession(session);
       } else if (guestSession?.waitingForMatchmaking) {
         clearGuestGameSession();
         setGuestSession(null);
@@ -1012,6 +1058,10 @@ export default function PlayPage({
     const onMatchmakingError = (payload: { message?: string }) => {
       setSearchingForOpponent(false);
       setMatchmakingGame(null);
+      if (guestSession?.waitingForMatchmaking) {
+        clearGuestGameSession();
+        setGuestSession(null);
+      }
       setError(payload.message ?? "Impossible de rechercher un adversaire.");
     };
     socket.on("matchmaking-found", onMatchFound);
@@ -1020,6 +1070,10 @@ export default function PlayPage({
       if (!ack?.success) {
         setSearchingForOpponent(false);
         setMatchmakingGame(null);
+        if (guestSession?.waitingForMatchmaking) {
+          clearGuestGameSession();
+          setGuestSession(null);
+        }
         setError(ack?.error ?? "Impossible de rejoindre la file d’attente.");
       }
     });
@@ -1290,7 +1344,8 @@ export default function PlayPage({
 
   const elapsedClockMs = activeGame?.status === "IN_PROGRESS" &&
     activeGame.initialTimeSeconds > 0 &&
-    activeGame.activeColor
+    activeGame.activeColor &&
+    activeGame.clockStartedAt != null
     ? Math.max(0, clockNow - clockSyncedAt)
     : 0;
   const whiteClock = Math.max(
